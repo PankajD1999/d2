@@ -1,0 +1,53 @@
+trigger:
+- main  # Adjust to the branch you want to trigger the pipeline on
+ 
+pr:
+- main  # Pull Request triggers (optional)
+ 
+variables:
+  azureSubscription: 'firstpipeline'  # Azure DevOps Service Connection Name
+  functionAppName: 'FirstDemowithGithub'         # The name of the Function App in Azure
+  resourceGroup: 'ServiceBusDemo'         # The resource group where the Function App is deployed
+  location: 'East US'  # Adjust as per your Azure region
+  dotnetVersion: '8.0.x'  # Specify .NET 8.0 runtime version
+ 
+pool:
+  vmImage: 'ubuntu-latest'  # You can also use 'windows-latest' if needed
+ 
+steps:
+ 
+# Step 1: Checkout the code
+- task: Checkout@1
+  displayName: 'Checkout Code'
+ 
+# Step 2: Install .NET SDK
+- task: UseDotNet@2
+  inputs:
+    packageType: 'sdk'
+    version: $(dotnetVersion)  # Use .NET 8.0 SDK
+    installationPath: $(Agent.ToolsDirectory)/dotnet
+  displayName: 'Install .NET 8.0 SDK'
+ 
+# Step 3: Restore dependencies
+- script: |
+    dotnet restore
+  displayName: 'Restore Dependencies'
+ 
+# Step 4: Build the application
+- script: |
+    dotnet build --configuration Release
+  displayName: 'Build Project'
+ 
+# Step 5: Publish the application to a folder
+- script: |
+    dotnet publish --configuration Release --output $(Build.ArtifactStagingDirectory)
+  displayName: 'Publish Application'
+ 
+# Step 6: Deploy to Azure Function App
+- task: AzureFunctionApp@1
+  inputs:
+    azureSubscription: $(azureSubscription)  # The service connection to Azure
+    appType: 'functionApp'  # Azure Function App
+    appName: $(functionAppName)  # The name of your Function App
+    package: $(Build.ArtifactStagingDirectory)  # The directory containing the published files
+  displayName: 'Deploy to Azure Function App'
